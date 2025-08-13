@@ -20,6 +20,11 @@ type SignUpRequest struct {
 	Password string `json:"password"`
 }
 
+type SignInRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 var peopleColl *mongo.Collection
 
 func main() {
@@ -36,7 +41,7 @@ func main() {
 
 	http.HandleFunc("/check-email", CheckEmailHandler)
 	http.HandleFunc("/signup", SignUpHandler)
-
+	http.HandleFunc("/signin", SignInHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -55,7 +60,7 @@ func CheckEmailHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	count, err := peopleColl.CountDocuments(ctx, bson.M{"email": email})
-	fmt.Println("The count of ", email , count)
+	fmt.Println("The count of ", email, count)
 	if err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
@@ -87,4 +92,29 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "id": res.InsertedID})
+}
+
+func SignInHandler(w http.ResponseWriter, r *http.Request) {
+	var req SignInRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	if peopleColl == nil {
+		http.Error(w, "db not ready", http.StatusInternalServerError)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var user SignUpRequest
+	res := peopleColl.FindOne(ctx, bson.M{"email": req.Email, "password": req.Password})
+	if err := res.Decode(&user); err != nil {
+		http.Error(w, "user not found", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]bool{"passwordControl": req.Password == user.Password})
 }
