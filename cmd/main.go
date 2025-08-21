@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	// chi -- 
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -42,6 +43,7 @@ func main() {
 	http.HandleFunc("/check-email", CheckEmailHandler)
 	http.HandleFunc("/signup", SignUpHandler)
 	http.HandleFunc("/signin", SignInHandler)
+	http.HandleFunc("/get-details", GetUserDetailsHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -60,7 +62,6 @@ func CheckEmailHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	count, err := peopleColl.CountDocuments(ctx, bson.M{"email": email})
-	fmt.Println("The count of ", email, count)
 	if err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
@@ -80,6 +81,8 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "db not ready", http.StatusInternalServerError)
 		return
 	}
+
+
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -109,12 +112,37 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var user SignUpRequest
-	res := peopleColl.FindOne(ctx, bson.M{"email": req.Email, "password": req.Password})
-	if err := res.Decode(&user); err != nil {
+	response := peopleColl.FindOne(ctx, bson.M{"email": req.Email})
+	if err := response.Decode(&user); err != nil {
 		http.Error(w, "user not found", http.StatusUnauthorized)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]bool{"passwordControl": req.Password == user.Password})
+}
+
+func GetUserDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	if email == "" {
+		http.Error(w, "email required", http.StatusBadRequest)
+		return
+	}
+	if peopleColl == nil {
+		http.Error(w, "db not ready", http.StatusInternalServerError)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var user SignUpRequest
+	response := peopleColl.FindOne(ctx, bson.M{"email": email})
+	if err := response.Decode(&user); err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"name": user.Name, "surname": user.Surname})
 }
