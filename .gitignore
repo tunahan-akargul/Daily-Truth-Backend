@@ -1,0 +1,53 @@
+# ---- Go ----
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Build directory
+bin/
+build/
+dist/
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE/editor folders
+.idea/
+.vscode/
+*.iml
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+*.DS_Store
+
+# OS files
+Thumbs.db
+
+# Environment and config files
+.env
+.env.*
+config.yaml
+config.local.yaml
+
+# Vendor folder (optional)
+vendor/
+
+# Temporary database or cache data
+data/
+tmp/
+
+# Docker and container stuff
+docker-compose.override.yml
