@@ -1,5 +1,7 @@
+PORT ?= 8080
+
 run:
-	go run ./cmd/main.go
+	go run ./cmd/server
 
 tidy:
 	go mod tidy
@@ -8,14 +10,14 @@ test:
 	go test ./... -v
 
 build:
-	go build -o bin/main ./cmd/main.go
+	go build -o bin/server ./cmd/server
 
 clean:
 	rm -rf bin
 
 help:
-	@echo "make run    - Run the app"
-	@echo "make tidy   - Sync deps"
-	@echo "make test   - Run tests"
-	@echo "make build  - Build binary"
-	@echo "make clean  - Remove build artifacts"
+	@echo "make run [PORT=8081] - Run server"
+	@echo "make build           - Build binary"
+	@echo "make tidy            - Go mod tidy"
+	@echo "make test            - Run tests"
+	@echo "make clean           - Remove bin/"
