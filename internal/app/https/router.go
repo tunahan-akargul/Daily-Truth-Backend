@@ -1,32 +1,38 @@
-package http
+package https
 
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-
 	"main-services/internal/app/https/handlers"
+	"main-services/internal/app/words"
 	"main-services/internal/db"
+
+	"github.com/go-chi/chi/v5"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func NewRouter(myMongo *db.Mongo) http.Handler {
-	route := chi.NewRouter()
-	route.Use(middleware.RequestID)
-	route.Use(middleware.RealIP)
-	route.Use(middleware.Logger)
-	route.Use(middleware.Recoverer)
-	route.Use(middleware.Timeout(30 * 1e9)) // 30s
+type collectionGetter interface {
+	Collection(string) *mongo.Collection
+}
 
-	route.Get("/health", func(wrıter http.ResponseWriter, request *http.Request) { wrıter.Write([]byte("ok")) })
+func NewRouter(mongoClient *db.Mongo) http.Handler {
+	router := chi.NewRouter()
 
-	// Auth/user endpoints
-	route.Route("/", func(route chi.Router) {
-		route.Get("/check-email", handlers.CheckEmail(myMongo))
-		route.Post("/signup", handlers.SignUp(myMongo))
-		route.Post("/signin", handlers.SignIn(myMongo))
-		route.Get("/get-details", handlers.GetUserDetails(myMongo))
+	// middlewares: CORS, logging, recoverer, etc.
+	// r.Use(...)
+
+	// Build Word feature
+	wordRepository := words.NewRepository(mongoClient)
+	wordService := words.NewService(wordRepository)
+	wordHandler := handlers.NewWordHandler(wordService)
+
+	router.Route("/", func(router chi.Router) {
+		// r.Use(AuthMiddleware()) // TODO: Add auth middleware when ready
+		router.Post("/post-word", wordHandler.Create)
+		//router.Get("/get-words", wordHandler.List)      // later
+		// r.Get("/{id}", wordH.GetByID)
+		// r.Delete("/{id}", wordH.Delete)
 	})
 
-	return route
+	return router
 }

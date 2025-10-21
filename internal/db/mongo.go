@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -14,8 +13,9 @@ type Mongo struct {
 	DB     *mongo.Database
 }
 
-func (myMongo *Mongo) People() *mongo.Collection {
-	return myMongo.DB.Collection("people")
+// Collection is a generic method to get any collection by name
+func (myMongo *Mongo) Collection(name string) *mongo.Collection {
+	return myMongo.DB.Collection(name)
 }
 
 func (myMongo *Mongo) Close(ctx context.Context) error {
@@ -26,22 +26,15 @@ func Connect(ctx context.Context, uri, dbName string) (*Mongo, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	c, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
 	}
-	if err := c.Ping(ctx, nil); err != nil {
+	if err := client.Ping(ctx, nil); err != nil {
 		return nil, err
 	}
 
-	myMongo := &Mongo{Client: c, DB: c.Database(dbName)}
-
-	// Ensure a unique index on email
-	index := mongo.IndexModel{
-		Keys:    bson.D{{Key: "email", Value: 1}},
-		Options: options.Index().SetUnique(true).SetName("uniq_email"),
-	}
-	_, _ = myMongo.People().Indexes().CreateOne(ctx, index)
+	myMongo := &Mongo{Client: client, DB: client.Database(dbName)}
 
 	return myMongo, nil
 }
