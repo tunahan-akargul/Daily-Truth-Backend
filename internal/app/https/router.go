@@ -10,23 +10,23 @@ import (
 	"main-services/internal/db"
 )
 
-func NewRouter(m *db.Mongo) http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * 1e9)) // 30s
+func NewRouter(myMongo *db.Mongo) http.Handler {
+	route := chi.NewRouter()
+	route.Use(middleware.RequestID)
+	route.Use(middleware.RealIP)
+	route.Use(middleware.Logger)
+	route.Use(middleware.Recoverer)
+	route.Use(middleware.Timeout(30 * 1e9)) // 30s
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	route.Get("/health", func(wrıter http.ResponseWriter, request *http.Request) { wrıter.Write([]byte("ok")) })
 
 	// Auth/user endpoints
-	r.Route("/", func(r chi.Router) {
-		r.Get("/check-email", handlers.CheckEmail(m))
-		r.Post("/signup", handlers.SignUp(m))
-		r.Post("/signin", handlers.SignIn(m))
-		r.Get("/get-details", handlers.GetUserDetails(m))
+	route.Route("/", func(route chi.Router) {
+		route.Get("/check-email", handlers.CheckEmail(myMongo))
+		route.Post("/signup", handlers.SignUp(myMongo))
+		route.Post("/signin", handlers.SignIn(myMongo))
+		route.Get("/get-details", handlers.GetUserDetails(myMongo))
 	})
 
-	return r
+	return route
 }

@@ -7,45 +7,45 @@ import (
 	"os"
 	"time"
 
-	"main-services/internal/db"
 	ihttp "main-services/internal/app/https"
+	"main-services/internal/db"
 )
 
 type Config struct {
-	Port      string
-	MongoURI  string
-	DBName    string
+	Port     string
+	MongoURI string
+	DBName   string
 }
 
 func loadConfig() Config {
-	c := Config{
-		Port:     getenv("PORT", "8080"),
-		MongoURI: getenv("MONGO_URI", "mongodb://localhost:27017"),
-		DBName:   getenv("MONGO_DB", "testdb"),
+	thiDayConfig := Config{
+		Port:     getEnvironment("PORT", "8083"),
+		MongoURI: getEnvironment("MONGO_URI", "mongodb://localhost:27017"),
+		DBName:   getEnvironment("MONGO_DB", "main-services"),
 	}
-	return c
+	return thiDayConfig
 }
 
-func getenv(k, def string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
+func getEnvironment(name, defaultValue string) string {
+	if variable := os.Getenv(name); variable != "" {
+		return variable
 	}
-	return def
+	return defaultValue
 }
 
 func Run(ctx context.Context) error {
-	cfg := loadConfig()
+	config := loadConfig()
 
-	mc, err := db.Connect(ctx, cfg.MongoURI, cfg.DBName)
+	mongoClient, err := db.Connect(ctx, config.MongoURI, config.DBName)
 	if err != nil {
 		return err
 	}
-	defer mc.Close(context.Background())
+	defer mongoClient.Close(context.Background())
 
-	router := ihttp.NewRouter(mc)
+	router := ihttp.NewRouter(mongoClient)
 
-	srv := &http.Server{
-		Addr:         ":" + cfg.Port,
+	server := &http.Server{
+		Addr:         ":" + config.Port,
 		Handler:      router,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -54,16 +54,16 @@ func Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("server listening on :%s", cfg.Port)
-		errCh <- srv.ListenAndServe()
+		log.Printf("server listening on :%s", config.Port)
+		errCh <- server.ListenAndServe()
 	}()
 
 	select {
 	case <-ctx.Done():
 		log.Println("shutting down...")
-		shCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		return srv.Shutdown(shCtx)
+		return server.Shutdown(shutCtx)
 	case err := <-errCh:
 		return err
 	}
